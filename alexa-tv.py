@@ -1,5 +1,5 @@
 """ fauxmo_minimal.py - Fabricate.IO
-
+    TODO: Update comment
     This is a demo python file showing what can be done with the debounce_handler.
     The handler prints True when you say "Alexa, device on" and False when you say
     "Alexa, device off".
@@ -11,57 +11,116 @@
     The IP of the triggering Echo is also passed into the act() function, so you can
     do different things based on which Echo triggered the handler.
 """
-
 import fauxmo
 import logging
 import time
 import os
 from debounce_handler import debounce_handler
+import subprocess
 
 logging.basicConfig(level=logging.DEBUG)
 
-class device_handler(debounce_handler):
-    """Publishes the on/off state requested,
-       and the IP address of the Echo making the request.
+# Configuration
+DEFAULT_VOLUME = 15
+APPS = {
+    'netflix': 'netflix',
+    'youtube': 'youtube.leanback.v4',
+}
+INPUTS = {
+    'chromecast': 'HDMI_1',
+    'playstation': 'HDMI_2',
+    'pc': 'HDMI_3',
+}
+
+
+def call(command, before_msg=None, after_msg=None, popen=False):
+    """Run specified LGWebOSRemote command using subprocess.call.
+
+    Arguments:
+        command (str):       command to run in the format 'python lgtv.py <command>'
+        before_msg (str):    message to print before command is run
+        after_msg (str):     message to print after command is run
+        popen (bool):        whether to use subprocess.Popen instead of subprocess.call
+
+    Returns:
+        True if success
     """
-    TRIGGERS = {"tv": 52000, "plex":52001, "volume": 52002, "netflix": 52003, "playback": 52004}
+    if before_msg:
+        print before_msg
+
+    args = ['python', 'lgtv.py'] + command.split()
+    if popen:  # Don't wait for the process to return
+        subprocess.Popen(args)
+    else:
+        subprocess.call(args)
+
+    if after_msg:
+        print after_msg
+
+    return True
+
+
+class device_handler(debounce_handler):
+    """Publishes the on/off state requested and the IP address of the Echo making the request."""
+    # Why 52XXX?
+    TRIGGERS = {
+        'tv': 52000,
+        'plex':52001,
+        'volume': 52002,
+        'netflix': 52003,
+        'playback': 52004,
+        'chromecast': 52005,
+        'playstation': 52006,
+        'pc': 52007,
+        'youtube': 52008,
+        'down': 52009,  # Volume
+        'up': 52010, # Volume
+        'mute': 52011,
+    }
+
 
     def act(self, client_address, state, name):
-        print "State", state, "on ", name, "from client @", client_address
-        if name == "tv" and state == True:
-            os.system("python lgtv.py on")
-            print "Magic packet sent to turn on TV!"
-        elif name == "tv" and state == False:
-            os.system("python lgtv.py off")
-            print "TV turned off!"
-        elif name == "plex" and state == True:
-            os.system("python lgtv.py startApp cdp-30")
-            print "Launched Plex"
-        elif name == "plex" and state == False:
-            os.system("python lgtv.py closeApp cdp-30")
-            print "Closed Plex"
-        elif name == "netflix" and state == True:
-            os.system("python lgtv.py startApp netflix")
-            print "Launched Netflix"
-        elif name == "netflix" and state == False:
-            os.system("python lgtv.py closeApp netflix")
-            print "Closed Netflix"
-        elif name == "volume" and state == True:
-            os.system("python lgtv.py setVolume 44")
-            print "Volume set to FOURTYFOUR"
-        elif name == "volume" and state == False:
-            os.system("python lgtv.py setVolume 0")
-            print "Volume set to ZERO"
-        elif name == "playback" and state == True:
-            os.system("python lgtv.py inputMediaPlay")
-            print "Playback set to RESUME"
-        elif name == "playback" and state == False:
-            os.system("python lgtv.py inputMediaPause")
-            print "Playback set to PAUSE"
+        print 'Name: {}, State: {}, Client {}'.format(name, state, client_address)
+
+        # TV On/Off
+        if name == 'tv' and state == True:
+            call('on', 'Turning on...', 'Turned on!', popen=True)
+        elif name == 'tv' and state == False:
+            call('off', 'Turning off...', 'Turned off!', popen=True)
+
+        # Volume
+        elif name == 'volume' and state == True:
+            call('setVolume {}'.format(DEFAULT_VOLUME), 'Volume set to {}'.format(DEFAULT_VOLUME))
+        elif name == 'volume' and state == False:
+            call('setVolume 0', 'Volume set to 0')
+        elif name == 'up':
+            call('volumeUp', 'Volume up')
+        elif name == 'down':
+            call('volumeDown', 'Volume down')
+        elif name == 'mute':
+            call('mute muted', 'Muted')
+
+        # Playback
+        elif name == 'playback' and state == True:
+            call('inputMediaPlay', 'Playback set to RESUME')
+        elif name == 'playback' and state == False:
+            call('inputMediaPause', 'Playback set to PAUSE')
+
+        # Inputs
+        elif name in INPUTS.keys():
+            call('setInput {}'.format(INPUTS[name]), 'Input set to {}'.format(name))
+
+        # Apps
+        elif name in APPS.keys():
+            if state == True:
+                call('startApp {}'.format(APPS[name]), 'Started {}'.format(name))
+            else:
+                call('closeApp {}'.format(APPS[name]), 'Closed {}'.format(name))
+
         return True
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     # Startup the fauxmo server
     fauxmo.DEBUG = True
     p = fauxmo.poller()
@@ -75,13 +134,11 @@ if __name__ == "__main__":
         fauxmo.fauxmo(trig, u, p, None, port, d)
 
     # Loop and poll for incoming Echo requests
-    logging.debug("Entering fauxmo polling loop")
+    logging.debug('Entering fauxmo polling loop')
     while True:
         try:
-            # Allow time for a ctrl-c to stop the process
             p.poll(100)
-            time.sleep(0.1)
         except Exception, e:
-            logging.critical("Critical exception: " + str(e))
+            logging.critical('Critical exception: ' + str(e))
             break
 
