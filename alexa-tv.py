@@ -16,7 +16,7 @@ Tips:
 import fauxmo
 import logging
 import os
-from debounce_handler import debounce_handler
+import debounce_handler
 import subprocess
 
 # TODO: Look at this
@@ -66,7 +66,7 @@ def lgtv_call(command, before_msg=None, after_msg=None, popen=False):
     return True
 
 
-class device_handler(debounce_handler):
+class device_handler(debounce_handler.debounce_handler):
     """Publishes the on/off state requested and the IP address of the Echo making the request."""
     CUSTOM_TRIGGERS = APPS.keys() + INPUTS.keys()
     TRIGGERS = {name: DEVICE_START_PORT+i for i, name in enumerate(DEFAULT_TRIGGERS + CUSTOM_TRIGGERS)}
@@ -119,21 +119,21 @@ class device_handler(debounce_handler):
 if __name__ == '__main__':
     # Startup the fauxmo server
     fauxmo.DEBUG = True
-    p = fauxmo.poller()
-    u = fauxmo.upnp_broadcast_responder()
-    u.init_socket()
-    p.add(u)
+    poller = fauxmo.poller()
+    listener = fauxmo.upnp_broadcast_responder()
+    listener.init_socket()
+    poller.add(listener)
 
     # Register the device callback as a fauxmo handler
-    d = device_handler()
-    for trig, port in d.TRIGGERS.items():
-        fauxmo.fauxmo(trig, u, p, None, port, d)
+    device_handler = device_handler()
+    for trigger, port in device_handler.TRIGGERS.items():
+        fauxmo.fauxmo(trigger, listener, poller, None, port, device_handler)
 
-    # Loop and poll for incoming Echo requests
+    # Loop and poll for incoming Alexa device requests
     logging.debug('Entering fauxmo polling loop')
     while True:
         try:
-            p.poll(100)
+            poller.poll(100)
         except Exception, e:
             logging.critical('Critical exception: ' + str(e))
             break
