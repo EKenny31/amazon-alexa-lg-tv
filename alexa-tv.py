@@ -68,8 +68,8 @@ def lgtv_call(command, before_msg=None, after_msg=None, popen=False):
 
 class device_handler(debounce_handler.debounce_handler):
     """Publishes the on/off state requested and the IP address of the Echo making the request."""
-    CUSTOM_TRIGGERS = APPS.keys() + INPUTS.keys()
-    TRIGGERS = {name: DEVICE_START_PORT+i for i, name in enumerate(DEFAULT_TRIGGERS + CUSTOM_TRIGGERS)}
+    custom_triggers = APPS.keys() + INPUTS.keys()
+    triggers = {name: DEVICE_START_PORT+i for i, name in enumerate(DEFAULT_TRIGGERS + custom_triggers)}
 
     def act(self, client_address, state, name):
         print 'Name: {}, State: {}, Client {}'.format(name, state, client_address)
@@ -126,7 +126,7 @@ if __name__ == '__main__':
 
     # Register the device callback as a fauxmo handler
     device_handler = device_handler()
-    for trigger, port in device_handler.TRIGGERS.items():
+    for trigger, port in device_handler.triggers.items():
         fauxmo.fauxmo(trigger, listener, poller, None, port, device_handler)
 
     # Loop and poll for incoming Alexa device requests
