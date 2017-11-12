@@ -39,7 +39,7 @@ INPUTS = {  # Dictionary of trigger name to input
 }
 
 
-def call(command, before_msg=None, after_msg=None, popen=False):
+def lgtv_call(command, before_msg=None, after_msg=None, popen=False):
     """Run specified LGWebOSRemote command using subprocess.call.
 
     Arguments:
@@ -76,42 +76,42 @@ class device_handler(debounce_handler):
 
         # TV On/Off
         if name == 'tv' and state is True:
-            call('on', 'Turning on...', 'Turned on!', popen=True)
+            lgtv_call('on', 'Turning on...', 'Turned on!', popen=True)
         elif name == 'tv' and state is False:
-            call('off', 'Turning off...', 'Turned off!', popen=True)
+            lgtv_call('off', 'Turning off...', 'Turned off!', popen=True)
 
         # Volume
         elif name == 'volume' and state is True:
-            call('setVolume {}'.format(DEFAULT_VOLUME), 'Volume set to {}'.format(DEFAULT_VOLUME))
+            lgtv_call('setVolume {}'.format(DEFAULT_VOLUME), 'Volume set to {}'.format(DEFAULT_VOLUME))
         elif name == 'volume' and state is False:
-            call('setVolume 0', 'Volume set to 0')
+            lgtv_call('setVolume 0', 'Volume set to 0')
         elif name == 'up':
-            call('volumeUp', 'Volume up')
+            lgtv_call('volumeUp', 'Volume up')
         elif name == 'down':
-            call('volumeDown', 'Volume down')
+            lgtv_call('volumeDown', 'Volume down')
         elif name == 'mute' and state is True:
-            call('mute muted', 'Muted')
+            lgtv_call('mute muted', 'Muted')
         elif name == 'mute' and state is False:
             # Volume up is the only I way I know how to unmute
-            call('volumeUp')
-            call('volumeDown', 'Unmuted')  # Volume down to maintain same volume level
+            lgtv_call('volumeUp')
+            lgtv_call('volumeDown', 'Unmuted')  # Volume down to maintain same volume level
 
         # Playback
         elif name == 'playback' and state is True:
-            call('inputMediaPlay', 'Playback set to RESUME')
+            lgtv_call('inputMediaPlay', 'Playback set to RESUME')
         elif name == 'playback' and state is False:
-            call('inputMediaPause', 'Playback set to PAUSE')
+            lgtv_call('inputMediaPause', 'Playback set to PAUSE')
 
         # Inputs
         elif name in INPUTS.keys():
-            call('setInput {}'.format(INPUTS[name]), 'Input set to {}'.format(name))
+            lgtv_call('setInput {}'.format(INPUTS[name]), 'Input set to {}'.format(name))
 
         # Apps
         elif name in APPS.keys():
             if state is True:
-                call('startApp {}'.format(APPS[name]), 'Started {}'.format(name))
+                lgtv_call('startApp {}'.format(APPS[name]), 'Started {}'.format(name))
             else:
-                call('closeApp {}'.format(APPS[name]), 'Closed {}'.format(name))
+                lgtv_call('closeApp {}'.format(APPS[name]), 'Closed {}'.format(name))
 
         return True
 
