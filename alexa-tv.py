@@ -71,6 +71,18 @@ class device_handler(debounce_handler.debounce_handler):
     triggers = {name: DEVICE_START_PORT+i for i, name in enumerate(DEFAULT_TRIGGERS + custom_triggers)}
 
     def act(self, client_address, state, name):
+        """Given a request, execute the desired action.
+
+        Voice commands are in the format "Alexa, turn <name> [on, off]"
+
+        Arguments:
+            client_address (str): IP address of the Alexa device that received the voice command
+            state (bool):         Desired state, either on or off
+            name (str):           Name of the device to perform the action on, aka trigger name
+
+        Returns:
+            True if success.
+        """
         logging.debug('Name: {}, State: {}, Client {}'.format(name, state, client_address))
 
         # TV On/Off
