@@ -3,11 +3,15 @@
 Based of off fauxmo_minimal.py, a demo python file showing what can be done with the debounce_handler.
 The handler prints True when you say "Alexa, device on" and False when you say "Alexa, device off".
 
-If you have two or more Echos, it only handles the one that hears you more clearly.
+If you have two or more Alexa devices, it only handles the one that hears you more clearly.
 You can have an Echo per room and not worry about your handlers triggering for those other rooms.
 
 The IP of the triggering Echo is also passed into the act() function, so you can
 do different things based on which Alexa device triggered the handler.
+
+Tips:
+- Run "python lgtv.py listInputs" to find app IDs
+- See lgtv.py for other available functionality
 """
 import fauxmo
 import logging
