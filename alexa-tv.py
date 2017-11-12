@@ -25,6 +25,8 @@ DEFAULT_VOLUME = 15
 APPS = {
     'netflix': 'netflix',
     'youtube': 'youtube.leanback.v4',
+    'amazon': 'amazon',
+    'gallery': 'com.webos.app.igallery',
 }
 INPUTS = {
     'chromecast': 'HDMI_1',
@@ -76,6 +78,8 @@ class device_handler(debounce_handler):
         'down': 52009,  # Volume
         'up': 52010, # Volume
         'mute': 52011,
+        'amazon': 52012,
+        'gallery': 52013,
     }
 
 
