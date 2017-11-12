@@ -64,10 +64,10 @@ def call(command, before_msg=None, after_msg=None, popen=False):
 
 class device_handler(debounce_handler):
     """Publishes the on/off state requested and the IP address of the Echo making the request."""
-    # Why 52XXX?
+    # TODO: Why 52XXX?
     TRIGGERS = {
         'tv': 52000,
-        'plex':52001,
+        'plex': 52001,
         'volume': 52002,
         'netflix': 52003,
         'playback': 52004,
@@ -76,26 +76,25 @@ class device_handler(debounce_handler):
         'pc': 52007,
         'youtube': 52008,
         'down': 52009,  # Volume
-        'up': 52010, # Volume
+        'up': 52010,  # Volume
         'mute': 52011,
         'amazon': 52012,
         'gallery': 52013,
     }
 
-
     def act(self, client_address, state, name):
         print 'Name: {}, State: {}, Client {}'.format(name, state, client_address)
 
         # TV On/Off
-        if name == 'tv' and state == True:
+        if name == 'tv' and state is True:
             call('on', 'Turning on...', 'Turned on!', popen=True)
-        elif name == 'tv' and state == False:
+        elif name == 'tv' and state is False:
             call('off', 'Turning off...', 'Turned off!', popen=True)
 
         # Volume
-        elif name == 'volume' and state == True:
+        elif name == 'volume' and state is True:
             call('setVolume {}'.format(DEFAULT_VOLUME), 'Volume set to {}'.format(DEFAULT_VOLUME))
-        elif name == 'volume' and state == False:
+        elif name == 'volume' and state is False:
             call('setVolume 0', 'Volume set to 0')
         elif name == 'up':
             call('volumeUp', 'Volume up')
@@ -105,9 +104,9 @@ class device_handler(debounce_handler):
             call('mute muted', 'Muted')
 
         # Playback
-        elif name == 'playback' and state == True:
+        elif name == 'playback' and state is True:
             call('inputMediaPlay', 'Playback set to RESUME')
-        elif name == 'playback' and state == False:
+        elif name == 'playback' and state is False:
             call('inputMediaPause', 'Playback set to PAUSE')
 
         # Inputs
@@ -116,7 +115,7 @@ class device_handler(debounce_handler):
 
         # Apps
         elif name in APPS.keys():
-            if state == True:
+            if state is True:
                 call('startApp {}'.format(APPS[name]), 'Started {}'.format(name))
             else:
                 call('closeApp {}'.format(APPS[name]), 'Closed {}'.format(name))
@@ -145,4 +144,3 @@ if __name__ == '__main__':
         except Exception, e:
             logging.critical('Critical exception: ' + str(e))
             break
-
