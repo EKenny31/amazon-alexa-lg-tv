@@ -1,34 +1,34 @@
-""" fauxmo_minimal.py - Fabricate.IO
-    TODO: Update comment
-    This is a demo python file showing what can be done with the debounce_handler.
-    The handler prints True when you say "Alexa, device on" and False when you say
-    "Alexa, device off".
+"""alexa-tv.py: Setup "devices" for your WebOS LG TV
 
-    If you have two or more Echos, it only handles the one that hears you more clearly.
-    You can have an Echo per room and not worry about your handlers triggering for
-    those other rooms.
+Based of off fauxmo_minimal.py, a demo python file showing what can be done with the debounce_handler.
+The handler prints True when you say "Alexa, device on" and False when you say "Alexa, device off".
 
-    The IP of the triggering Echo is also passed into the act() function, so you can
-    do different things based on which Echo triggered the handler.
+If you have two or more Echos, it only handles the one that hears you more clearly.
+You can have an Echo per room and not worry about your handlers triggering for those other rooms.
+
+The IP of the triggering Echo is also passed into the act() function, so you can
+do different things based on which Alexa device triggered the handler.
 """
 import fauxmo
 import logging
-import time
 import os
 from debounce_handler import debounce_handler
 import subprocess
 
+# TODO: Look at this
 logging.basicConfig(level=logging.DEBUG)
 
 # Configuration
 DEFAULT_VOLUME = 15
-APPS = {
+DEVICE_START_PORT = 52000  # TODO: Any reason why 52000 in particular?
+DEFAULT_TRIGGERS = ['tv', 'volume', 'up', 'down', 'mute', 'playback']
+APPS = {  # Dictionary of trigger name to app ID
     'netflix': 'netflix',
     'youtube': 'youtube.leanback.v4',
     'amazon': 'amazon',
     'gallery': 'com.webos.app.igallery',
 }
-INPUTS = {
+INPUTS = {  # Dictionary of trigger name to input
     'chromecast': 'HDMI_1',
     'playstation': 'HDMI_2',
     'pc': 'HDMI_3',
@@ -64,23 +64,8 @@ def call(command, before_msg=None, after_msg=None, popen=False):
 
 class device_handler(debounce_handler):
     """Publishes the on/off state requested and the IP address of the Echo making the request."""
-    # TODO: Why 52XXX?
-    TRIGGERS = {
-        'tv': 52000,
-        'plex': 52001,
-        'volume': 52002,
-        'netflix': 52003,
-        'playback': 52004,
-        'chromecast': 52005,
-        'playstation': 52006,
-        'pc': 52007,
-        'youtube': 52008,
-        'down': 52009,  # Volume
-        'up': 52010,  # Volume
-        'mute': 52011,
-        'amazon': 52012,
-        'gallery': 52013,
-    }
+    CUSTOM_TRIGGERS = APPS.keys() + INPUTS.keys()
+    TRIGGERS = {name: DEVICE_START_PORT+i for i, name in enumerate(DEFAULT_TRIGGERS + CUSTOM_TRIGGERS)}
 
     def act(self, client_address, state, name):
         print 'Name: {}, State: {}, Client {}'.format(name, state, client_address)
