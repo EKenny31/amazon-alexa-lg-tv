@@ -21,9 +21,9 @@ import subprocess
 # Logging
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%H:%M:%S')
 
-# Configuration
+# TV Configuration
 DEFAULT_VOLUME = 15
-DEVICE_START_PORT = 52000  # TODO: Any reason why 52000 in particular?
+DEVICE_START_PORT = 52000  # TODO: Why 52000?
 DEFAULT_TRIGGERS = ['tv', 'volume', 'up', 'down', 'mute', 'playback']
 APPS = {  # Dictionary of trigger name to app ID
     'netflix': 'netflix',
