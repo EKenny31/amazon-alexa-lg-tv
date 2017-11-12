@@ -85,8 +85,12 @@ class device_handler(debounce_handler):
             call('volumeUp', 'Volume up')
         elif name == 'down':
             call('volumeDown', 'Volume down')
-        elif name == 'mute':
+        elif name == 'mute' and state is True:
             call('mute muted', 'Muted')
+        elif name == 'mute' and state is False:
+            # Volume up is the only I way I know how to unmute
+            call('volumeUp')
+            call('volumeDown', 'Unmuted')  # Volume down to maintain same volume level
 
         # Playback
         elif name == 'playback' and state is True:
