@@ -15,12 +15,11 @@ Tips:
 """
 import fauxmo
 import logging
-import os
 import debounce_handler
 import subprocess
 
-# TODO: Look at this
-logging.basicConfig(level=logging.DEBUG)
+# Logging
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%H:%M:%S')
 
 # Configuration
 DEFAULT_VOLUME = 15
@@ -52,7 +51,7 @@ def lgtv_call(command, before_msg=None, after_msg=None, popen=False):
         True if success
     """
     if before_msg:
-        print before_msg
+        logging.info(before_msg)
 
     args = ['python', 'lgtv.py'] + command.split()
     if popen:  # Don't wait for the process to return
@@ -61,7 +60,7 @@ def lgtv_call(command, before_msg=None, after_msg=None, popen=False):
         subprocess.call(args)
 
     if after_msg:
-        print after_msg
+        logging.info(after_msg)
 
     return True
 
@@ -72,7 +71,7 @@ class device_handler(debounce_handler.debounce_handler):
     triggers = {name: DEVICE_START_PORT+i for i, name in enumerate(DEFAULT_TRIGGERS + custom_triggers)}
 
     def act(self, client_address, state, name):
-        print 'Name: {}, State: {}, Client {}'.format(name, state, client_address)
+        logging.debug('Name: {}, State: {}, Client {}'.format(name, state, client_address))
 
         # TV On/Off
         if name == 'tv' and state is True:
