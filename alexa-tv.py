@@ -24,7 +24,6 @@ logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=loggi
 
 # TV Configuration
 MAX_VOLUME = 19
-DEVICE_START_PORT = 52000  # TODO: Why 52000?
 DEFAULT_TRIGGERS = ['tv', 'volume', 'mute', 'playback']
 SET_VOLUME_CONTROLS = range(0, MAX_VOLUME+1)  # Range of values you can set the volume to
 CHANGE_VOLUME_CONTROLS = range(1, 10)  # Values you can change the volume by
@@ -74,19 +73,32 @@ class device_handler(debounce_handler.debounce_handler):
     muted = None
     change_volume_controls = None
     set_volume_controls = None
-    triggers = None
+    triggers = {}
+
+    # Define starting port for triggers
+    # Give each category of triggers its own range to prevent interference when adding new triggers
+    DEFAULT_TRIGGERS_START_PORT = 52000
+    APPS_START_PORT = 53000
+    INPUTS_START_PORT = 54000
+    SET_VOLUME_START_PORT = 55000
+    CHANGE_VOLUME_START_PORT = 56000
+
+    def add_triggers(self, trigger_names, start_port):
+        for i, trigger_name in enumerate(trigger_names):
+            self.triggers[trigger_name] = start_port + i
 
     def init_triggers(self):
-        trigger_names = DEFAULT_TRIGGERS
-        trigger_names += APPS.keys() + INPUTS.keys()
+        self.add_triggers(DEFAULT_TRIGGERS, self.DEFAULT_TRIGGERS_START_PORT)
+        #self.add_triggers(APPS.keys(), self.APPS_START_PORT)
+        #self.add_triggers(INPUTS.keys(), self.INPUTS_START_PORT)
 
         # Only add volume controls if volume is a default trigger
-        if 'volume' in trigger_names:
-            #self.change_volume_controls = map(lambda x: 'c{}'.format(x), CHANGE_VOLUME_CONTROLS)
+        if 'volume' in DEFAULT_TRIGGERS:
             self.set_volume_controls = map(str, SET_VOLUME_CONTROLS)
-            trigger_names += self.set_volume_controls
+            #self.add_triggers(self.set_volume_controls, self.SET_VOLUME_START_PORT)
+            self.change_volume_controls = map(lambda x: 'c{}'.format(x), CHANGE_VOLUME_CONTROLS)
+            #self.add_triggers(self.change_volume_controls, 56000)
 
-        self.triggers = {name: DEVICE_START_PORT+i for i, name in enumerate(trigger_names)}
         logging.info('Triggers: {}'.format(self.triggers))
 
     def check_volume_status(self):
