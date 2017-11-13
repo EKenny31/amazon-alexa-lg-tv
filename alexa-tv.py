@@ -20,12 +20,14 @@ import subprocess
 import json
 
 # Logging
-logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO, datefmt='%H:%M:%S')
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%H:%M:%S')
 
 # TV Configuration
-DEFAULT_VOLUME = 15
+MAX_VOLUME = 19
 DEVICE_START_PORT = 52000  # TODO: Why 52000?
-DEFAULT_TRIGGERS = ['tv', 'volume', 'up', 'down', 'mute', 'playback']
+DEFAULT_TRIGGERS = ['tv', 'volume', 'mute', 'playback']
+SET_VOLUME_CONTROLS = range(0, MAX_VOLUME+1)  # Range of values you can set the volume to
+CHANGE_VOLUME_CONTROLS = range(1, 10)  # Values you can change the volume by
 APPS = {  # Dictionary of trigger name to app ID
     'netflix': 'netflix',
     'youtube': 'youtube.leanback.v4',
@@ -70,10 +72,22 @@ class device_handler(debounce_handler.debounce_handler):
     """Publishes the on/off state requested and the IP address of the Echo making the request."""
     current_volume = None
     muted = None
+    change_volume_controls = None
+    set_volume_controls = None
+    triggers = None
 
-    # Triggers
-    custom_triggers = APPS.keys() + INPUTS.keys()
-    triggers = {name: DEVICE_START_PORT+i for i, name in enumerate(DEFAULT_TRIGGERS + custom_triggers)}
+    def init_triggers(self):
+        trigger_names = DEFAULT_TRIGGERS
+        trigger_names += APPS.keys() + INPUTS.keys()
+
+        # Only add volume controls if volume is a default trigger
+        if 'volume' in trigger_names:
+            #self.change_volume_controls = map(lambda x: 'c{}'.format(x), CHANGE_VOLUME_CONTROLS)
+            self.set_volume_controls = map(str, SET_VOLUME_CONTROLS)
+            trigger_names += self.set_volume_controls
+
+        self.triggers = {name: DEVICE_START_PORT+i for i, name in enumerate(trigger_names)}
+        logging.info('Triggers: {}'.format(self.triggers))
 
     def check_volume_status(self):
         """Check and current volume/whether muted and update internal status.
@@ -107,6 +121,34 @@ class device_handler(debounce_handler.debounce_handler):
         return True
 
 
+    def set_volume(self, name):
+        """Set volume to specified level.
+
+        Arguments:
+            name (str): trigger name, expected to be an integer in string format
+        """
+        volume_to_set = int(name)
+        if volume_to_set > MAX_VOLUME:
+            logging.error('Requested volume ({}) over max ({})'.format(volume_to_set, MAX_VOLUME))
+        else:
+            lgtv_call('setVolume {}'.format(volume_to_set), 'Volume set to {}'.format(volume_to_set))
+
+
+    def change_volume(self, name, state):
+        """Increase/decrease volume by the specified amount.
+
+        Arguments:
+            name (str):   trigger name with expected format c<delta>, where delta is an integer in string format
+            state (bool): whether to increase or decrease volume
+        """
+        delta = int(name.lstrip('c'))
+        volume_to_set = self.current_volume + delta if state is True else self.current_volume - delta
+        if volume_to_set > MAX_VOLUME:
+            logging.error('Requested volume ({}) over max ({})'.format(volume_to_set, MAX_VOLUME))
+        else:
+            lgtv_call('setVolume {}'.format(volume_to_set), 'Volume set to {}'.format(volume_to_set))
+
+
     def act(self, client_address, state, name):
         """Given a request, execute the desired action.
 
@@ -128,21 +170,23 @@ class device_handler(debounce_handler.debounce_handler):
         elif name == 'tv' and state is False:
             lgtv_call('off', 'Turning off...', 'Turned off!', popen=True)
 
-        # Volume
-        elif name == 'volume' and state is True:
-            lgtv_call('setVolume {}'.format(DEFAULT_VOLUME), 'Volume set to {}'.format(DEFAULT_VOLUME))
-        elif name == 'volume' and state is False:
-            lgtv_call('setVolume 0', 'Volume set to 0')
-        elif name == 'up':
-            lgtv_call('volumeUp', 'Volume up')
-        elif name == 'down':
-            lgtv_call('volumeDown', 'Volume down')
-        elif name == 'mute' and state is True:
-            lgtv_call('mute muted', 'Muted')
-        elif name == 'mute' and state is False:
-            # Volume up is the only I way I know how to unmute
-            lgtv_call('volumeUp')
-            lgtv_call('volumeDown', 'Unmuted')  # Volume down to maintain same volume level
+        # Volume controls
+        elif (name == 'volume' and state is True) or (name == 'mute' and state is False):
+            if self.muted is True:
+                # Volume up is the only I way I know how to unmute
+                lgtv_call('volumeUp')
+                lgtv_call('volumeDown', 'Unmuted')  # Volume down to maintain same volume level
+            else:
+                logging.info('Asked to unmute, but already unmuted')
+        elif (name == 'volume' and state is False) or (name == 'mute' and state is True):
+            if self.muted is False:
+                lgtv_call('mute muted', 'Turned off volume')
+            else:
+                logging.info('Asked to mute, but already muted')
+        elif name in self.set_volume_controls:
+            self.set_volume(name)
+        #elif name in self.change_volume_controls:
+        #    self.change_volume(name, state)
 
         # Playback
         elif name == 'playback' and state is True:
@@ -174,6 +218,7 @@ if __name__ == '__main__':
 
     # Register the device callback as a fauxmo handler
     device_handler = device_handler()
+    device_handler.init_triggers()
     for trigger, port in device_handler.triggers.items():
         fauxmo.fauxmo(trigger, listener, poller, None, port, device_handler)
 
@@ -181,8 +226,8 @@ if __name__ == '__main__':
     logging.debug('Entering fauxmo polling loop')
     while True:
         try:
-            poller.poll(100)
             device_handler.check_volume_status()
+            poller.poll(100)
         except Exception, e:
             logging.critical('Critical exception: {}'.format(e))
             break
