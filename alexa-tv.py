@@ -20,7 +20,8 @@ import subprocess
 import json
 
 # Logging
-logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%H:%M:%S')
+LOG_LEVEL = logging.DEBUG
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=LOG_LEVEL, datefmt='%H:%M:%S')
 
 # TV Configuration
 MAX_VOLUME = 19
@@ -195,8 +196,8 @@ class device_handler(debounce_handler.debounce_handler):
                 lgtv_call('mute muted', 'Turned off volume')
             else:
                 logging.info('Asked to mute, but already muted')
-        elif name in self.set_volume_controls:
-            self.set_volume(name)
+        #elif name in self.set_volume_controls:
+        #    self.set_volume(name)
         #elif name in self.change_volume_controls:
         #    self.change_volume(name, state)
 
@@ -222,7 +223,7 @@ class device_handler(debounce_handler.debounce_handler):
 
 if __name__ == '__main__':
     # Startup the fauxmo server
-    fauxmo.DEBUG = True
+    fauxmo.DEBUG = True if LOG_LEVEL == logging.DEBUG else False
     poller = fauxmo.poller()
     listener = fauxmo.upnp_broadcast_responder()
     listener.init_socket()
