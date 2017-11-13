@@ -17,9 +17,10 @@ import fauxmo
 import logging
 import debounce_handler
 import subprocess
+import json
 
 # Logging
-logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG, datefmt='%H:%M:%S')
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO, datefmt='%H:%M:%S')
 
 # TV Configuration
 DEFAULT_VOLUME = 15
@@ -67,8 +68,44 @@ def lgtv_call(command, before_msg=None, after_msg=None, popen=False):
 
 class device_handler(debounce_handler.debounce_handler):
     """Publishes the on/off state requested and the IP address of the Echo making the request."""
+    current_volume = None
+    muted = None
+
+    # Triggers
     custom_triggers = APPS.keys() + INPUTS.keys()
     triggers = {name: DEVICE_START_PORT+i for i, name in enumerate(DEFAULT_TRIGGERS + custom_triggers)}
+
+    def check_volume_status(self):
+        """Check and current volume/whether muted and update internal status.
+
+        Returns:
+            True if success, False if bad response
+        """
+        # Use Popen to get the response
+        pipe = subprocess.PIPE
+        process = subprocess.Popen(['python', 'lgtv.py', 'audioVolume'], stdin=pipe, stdout=pipe, stderr=pipe)
+        output, error = process.communicate()
+        response, closing = output.rstrip('\n').split('\n')  # Except two responses separated by newline with trailing newline
+
+        # Load response
+        try:
+            response_json = json.loads(response)
+        except Exception as e:
+            logging.error('volumeStatus response is not JSON: {}'.format(response))
+            logging.error('json.loads exception: {}'.format(e))
+            return False
+        try:
+            payload = response_json['payload']
+            self.current_volume = payload['volume']
+            self.muted = payload['muted']
+        except Exception as e:
+            logging.error('bad volumeStatus response: {}'.format(e))
+            return False
+
+        logging.debug('Current volume: {}'.format(self.current_volume))
+        logging.debug('Muted: {}'.format(self.muted))
+        return True
+
 
     def act(self, client_address, state, name):
         """Given a request, execute the desired action.
@@ -145,6 +182,7 @@ if __name__ == '__main__':
     while True:
         try:
             poller.poll(100)
+            device_handler.check_volume_status()
         except Exception, e:
-            logging.critical('Critical exception: ' + str(e))
+            logging.critical('Critical exception: {}'.format(e))
             break
