@@ -127,6 +127,7 @@ class device_handler(debounce_handler.debounce_handler):
         pipe = subprocess.PIPE
         process = subprocess.Popen(['python', 'lgtv.py', 'audioVolume'], stdin=pipe, stdout=pipe, stderr=pipe)
         output, error = process.communicate()
+        # TODO: Add try, except for this
         response, closing = output.rstrip('\n').split('\n')  # Except two responses separated by newline with trailing newline
 
         # Load response
