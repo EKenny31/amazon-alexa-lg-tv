@@ -21,7 +21,7 @@ import json
 import time
 
 # Logging
-LOG_LEVEL = logging.INFO
+LOG_LEVEL = logging.DEBUG
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=LOG_LEVEL, datefmt='%H:%M:%S')
 
 # TV Configuration
@@ -193,6 +193,7 @@ class device_handler(debounce_handler.debounce_handler):
             True if success.
         """
         logging.debug('Name: {}, State: {}, Client {}'.format(name, state, client_address))
+        self.check_volume_status()
 
         # TV On/Off
         if name == 'tv' and state is True:
@@ -256,9 +257,8 @@ if __name__ == '__main__':
     logging.debug('Entering fauxmo polling loop')
     while True:
         try:
-            # TODO: Sometimes, no response
+            # TODO: Sometimes no response after turn off
             # Have to manually run command or turn TV on
-            device_handler.check_volume_status()
             poller.poll(100)
         except Exception, e:
             logging.critical('Critical exception: {}'.format(e))
