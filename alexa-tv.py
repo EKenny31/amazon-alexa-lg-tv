@@ -18,16 +18,17 @@ import logging
 import debounce_handler
 import subprocess
 import json
+import time
 
 # Logging
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=LOG_LEVEL, datefmt='%H:%M:%S')
 
 # TV Configuration
-MAX_VOLUME = 19
+MAX_VOLUME = 100
 DEFAULT_TRIGGERS = ['tv', 'volume', 'mute', 'playback']
 SET_VOLUME_CONTROLS = range(0, MAX_VOLUME+1)  # Range of values you can set the volume to
-CHANGE_VOLUME_CONTROLS = range(1, 10)  # Values you can change the volume by
+CHANGE_VOLUME_CONTROLS = range(1, 11)  # Values you can change the volume by
 APPS = {  # Dictionary of trigger name to app ID
     'netflix': 'netflix',
     'youtube': 'youtube.leanback.v4',
@@ -75,6 +76,8 @@ class device_handler(debounce_handler.debounce_handler):
     change_volume_controls = None
     set_volume_controls = None
     triggers = {}
+    set_volume_controls = map(str, SET_VOLUME_CONTROLS)
+    change_volume_controls = map(lambda x: 'c{}'.format(x), CHANGE_VOLUME_CONTROLS)
 
     # Define starting port for triggers
     # Give each category of triggers its own range to prevent interference when adding new triggers
@@ -84,21 +87,33 @@ class device_handler(debounce_handler.debounce_handler):
     SET_VOLUME_START_PORT = 55000
     CHANGE_VOLUME_START_PORT = 56000
 
-    def add_triggers(self, trigger_names, start_port):
+    def add_triggers(self, trigger_names, start_port=None):
+        """Add specified trigger names to internal dictionary of trigger names to ports.
+
+        Arguments:
+            trigger_names (list): list of trigger names to add
+            start_port (int):     start of the desired port range, not required for set/change volume triggers
+        """
         for i, trigger_name in enumerate(trigger_names):
-            self.triggers[trigger_name] = start_port + i
+            # If volume control, determine port based on integer in trigger_name
+            # This prevents inteference when changing the ranges/registering new triggers
+            if trigger_name in self.set_volume_controls:
+                self.triggers[trigger_name] = self.SET_VOLUME_START_PORT + int(trigger_name)
+            elif trigger_name in self.change_volume_controls:
+                self.triggers[trigger_name] = self.CHANGE_VOLUME_START_PORT + int(trigger_name.lstrip('c'))
+            else:  # Otherwise, use specified port
+                self.triggers[trigger_name] = start_port + i
 
     def init_triggers(self):
+        """Initialize triggers based on configuration."""
         self.add_triggers(DEFAULT_TRIGGERS, self.DEFAULT_TRIGGERS_START_PORT)
-        #self.add_triggers(APPS.keys(), self.APPS_START_PORT)
-        #self.add_triggers(INPUTS.keys(), self.INPUTS_START_PORT)
+        self.add_triggers(APPS.keys(), self.APPS_START_PORT)
+        self.add_triggers(INPUTS.keys(), self.INPUTS_START_PORT)
 
         # Only add volume controls if volume is a default trigger
         if 'volume' in DEFAULT_TRIGGERS:
-            self.set_volume_controls = map(str, SET_VOLUME_CONTROLS)
-            #self.add_triggers(self.set_volume_controls, self.SET_VOLUME_START_PORT)
-            self.change_volume_controls = map(lambda x: 'c{}'.format(x), CHANGE_VOLUME_CONTROLS)
-            #self.add_triggers(self.change_volume_controls, 56000)
+            self.add_triggers(self.set_volume_controls)
+            self.add_triggers(self.change_volume_controls)
 
         logging.info('Triggers: {}'.format(self.triggers))
 
@@ -133,7 +148,6 @@ class device_handler(debounce_handler.debounce_handler):
         logging.debug('Muted: {}'.format(self.muted))
         return True
 
-
     def set_volume(self, name):
         """Set volume to specified level.
 
@@ -141,11 +155,10 @@ class device_handler(debounce_handler.debounce_handler):
             name (str): trigger name, expected to be an integer in string format
         """
         volume_to_set = int(name)
-        if volume_to_set > MAX_VOLUME:
-            logging.error('Requested volume ({}) over max ({})'.format(volume_to_set, MAX_VOLUME))
+        if volume_to_set == self.current_volume:
+            logging.info('Volume is already {}'.format(self.current_volume))
         else:
             lgtv_call('setVolume {}'.format(volume_to_set), 'Volume set to {}'.format(volume_to_set))
-
 
     def change_volume(self, name, state):
         """Increase/decrease volume by the specified amount.
@@ -157,10 +170,11 @@ class device_handler(debounce_handler.debounce_handler):
         delta = int(name.lstrip('c'))
         volume_to_set = self.current_volume + delta if state is True else self.current_volume - delta
         if volume_to_set > MAX_VOLUME:
-            logging.error('Requested volume ({}) over max ({})'.format(volume_to_set, MAX_VOLUME))
+            # Set volume to max instead
+            logging.error('Change volume: requested volume ({}) over max ({})'.format(volume_to_set, MAX_VOLUME))
+            lgtv_call('setVolume {}'.format(volume_to_set), 'Volume set to max volume of {}'.format(MAX_VOLUME))
         else:
-            lgtv_call('setVolume {}'.format(volume_to_set), 'Volume set to {}'.format(volume_to_set))
-
+            lgtv_call('setVolume {}'.format(volume_to_set), 'Volume changed from {} to {}'.format(self.current_volume, volume_to_set))
 
     def act(self, client_address, state, name):
         """Given a request, execute the desired action.
@@ -188,18 +202,18 @@ class device_handler(debounce_handler.debounce_handler):
             if self.muted is True:
                 # Volume up is the only I way I know how to unmute
                 lgtv_call('volumeUp')
-                lgtv_call('volumeDown', 'Unmuted')  # Volume down to maintain same volume level
+                lgtv_call('volumeDown', 'Turned off mute')  # Volume down to maintain same volume level
             else:
                 logging.info('Asked to unmute, but already unmuted')
         elif (name == 'volume' and state is False) or (name == 'mute' and state is True):
             if self.muted is False:
-                lgtv_call('mute muted', 'Turned off volume')
+                lgtv_call('mute muted', 'Turned on mute')
             else:
                 logging.info('Asked to mute, but already muted')
-        #elif name in self.set_volume_controls:
-        #    self.set_volume(name)
-        #elif name in self.change_volume_controls:
-        #    self.change_volume(name, state)
+        elif name in self.set_volume_controls:
+            self.set_volume(name)
+        elif name in self.change_volume_controls:
+            self.change_volume(name, state)
 
         # Playback
         elif name == 'playback' and state is True:
