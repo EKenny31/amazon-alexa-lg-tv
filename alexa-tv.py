@@ -150,7 +150,7 @@ class device_handler(debounce_handler.debounce_handler):
 
     # TODO: Use state to decide whether to turn on/off mute?
     # Currently, mute will stay on when setting/changing volume
-    def set_volume(self, name, state):
+    def set_volume(self, name):
         """Set volume to specified level.
 
         Arguments:
