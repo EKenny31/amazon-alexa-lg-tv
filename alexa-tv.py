@@ -256,6 +256,8 @@ if __name__ == '__main__':
     logging.debug('Entering fauxmo polling loop')
     while True:
         try:
+            # TODO: Sometimes, no response
+            # Have to manually run command or turn TV on
             device_handler.check_volume_status()
             poller.poll(100)
         except Exception, e:
