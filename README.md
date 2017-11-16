@@ -8,44 +8,38 @@ You need a TV with WebOS 2.0+.
 
 - "Alexa, turn on TV"
 - "Alexa, turn off the TV"
-- "Alexa, turn on Plex"
-- "Alexa, turn off Plex"
 - "Alexa, turn on Netflix"
 - "Alexa, turn off Netflix"
-- "Alexa, turn on Volume" (default level is set to 44)
-- "Alexa, turn off the Volume" (sets volume to 0)
+- "Alexa, turn on HDMI1"
+- "Alexa, turn on Volume" (unmute)
+- "Alexa, turn off the Volume" (mute)
+- "Alexa, turn on mute"
+- "Alexa, turn off mute"
+- "Alexa, turn on X" (sets volume to X)
+- "Alexa, turn on CX" (increases volume by X)
+- "Alexa, turn off CX" (decreases volume by X)
 - "Alexa, turn on Playback" (Can also be used as an "OK" button when on a Netflix "Are you still watching?" prompt.)
 - "Alexa, turn off Playback"
 
 (You can also use stop/start in place of the turn on/off invocation)
 
 ## Customize Commands
-- If you want to start an app, add the following lines. To find the app id, run "python lgtv.py listApps" and find the app ID. Remember to add a trigger on line 27:
+- If you want to add an app trigger, add it to the APPS dictionary. They keys are trigger names and the values are app IDS. You can find the app names by calling "python lgtv.py listApps"
 
-       elif name == "hulu" and state == True:
-            os.system("python lgtv.py startApp [appid]")
-            print "Launched Hulu"
-        elif name == "hulu" and state == False:
-            os.system("python lgtv.py closeApp [appid]")
-            print "Closed Hulu
-            
-- If you want to change inputs, add the following lines. Remember to add an "HDMI X" trigger on line 27 (this is the name Alexa listens for, it can be anything you want).
+- If you want to add a new input trigger, add it to the INPUTS dictionary. The keys are trigger names and the values are input names (e.g. 'HDMI_1')
 
-        elif name == "HDMI X" and state == True:
-            os.system("python lgtv.py setInput HDMI_X")
-            print "Input set to HDMI X"
-            
-See https://github.com/klattimer/LGWebOSRemote for a full list of triggers.
+
+See https://github.com/klattimer/LGWebOSRemote for a full list of commands.
 
 ## Install
 
 - Clone this repository
-- Install python (I used 2.7.9 but should work with 3.x)
+- Install python (I used 2.7.14 and recommend using pyenv—you will need to make some changes if you want to use Python 3)
 - Run "pip install -r requirements.txt"
 - Authenticate with "python lgtv.py auth [IP Address]"
 - Start the script with `python alexa-tv.py`
-- Enable "Mobile TV On"
-- On the Alexa App, go to "Smart Home" > "Devices" > "Discover" for Alexa to find all commands
+- Enable "Mobile TV On" in your TV settings (should be under "General")
+- On the Alexa App, go to "Smart Home" > "Devices" > "Discover" for Alexa to discover the new devices
 
 When you try to turn on/off the TV for the first you will need to allow the script to access your TV. Alternatively, run "python lgtv.py auth [IP Address]"
 
@@ -72,4 +66,4 @@ stdout_capture_maxbytes=1MB
 
 - https://github.com/toddmedema/echo
 - https://github.com/klattimer/LGWebOSRemote
-
+- https://github.com/akhan23wgu/amazon-alexa-lg-tv

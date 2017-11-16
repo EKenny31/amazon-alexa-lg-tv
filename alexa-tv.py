@@ -29,6 +29,7 @@ MAX_VOLUME = 100
 DEFAULT_TRIGGERS = ['tv', 'volume', 'mute', 'playback']
 SET_VOLUME_CONTROLS = range(0, MAX_VOLUME+1)  # Range of values you can set the volume to
 CHANGE_VOLUME_CONTROLS = range(1, 11)  # Values you can change the volume by
+# TODO: Automatically generate this based on listApps response?
 APPS = {  # Dictionary of trigger name to app ID
     'netflix': 'netflix',
     'youtube': 'youtube.leanback.v4',
@@ -237,6 +238,7 @@ class device_handler(debounce_handler.debounce_handler):
 
         # Inputs
         elif name in INPUTS.keys():
+            # TODO: change to previous input when state == False
             lgtv_call('setInput {}'.format(INPUTS[name]), 'Input set to {}'.format(name))
 
         # Apps
@@ -250,6 +252,7 @@ class device_handler(debounce_handler.debounce_handler):
 
 
 if __name__ == '__main__':
+    # TODO: Use newer fauxmo version (python 3)
     # Startup the fauxmo server
     fauxmo.DEBUG = True if LOG_LEVEL == logging.DEBUG else False
     poller = fauxmo.poller()
