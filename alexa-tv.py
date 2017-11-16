@@ -19,6 +19,7 @@ import debounce_handler
 import subprocess
 import json
 import time
+import argparse
 
 # Logging
 LOG_LEVEL = logging.DEBUG
@@ -72,6 +73,7 @@ def lgtv_call(command, before_msg=None, after_msg=None, popen=False):
 
 class device_handler(debounce_handler.debounce_handler):
     """Publishes the on/off state requested and the IP address of the Echo making the request."""
+    args = None
     current_volume = None
     muted = None
     change_volume_controls = None
@@ -89,7 +91,7 @@ class device_handler(debounce_handler.debounce_handler):
     SET_VOLUME_START_PORT = 55000
     CHANGE_VOLUME_START_PORT = 56000
 
-    def add_triggers(self, trigger_names, start_port=None):
+    def add_triggers(self, trigger_names, start_port=None, args=None):
         """Add specified trigger names to internal dictionary of trigger names to ports.
 
         Arguments:
@@ -100,22 +102,29 @@ class device_handler(debounce_handler.debounce_handler):
             # If volume control, determine port based on integer in trigger_name
             # This prevents inteference when changing the ranges/registering new triggers
             if trigger_name in self.set_volume_controls:
-                self.triggers[trigger_name] = self.SET_VOLUME_START_PORT + int(trigger_name)
+                value = int(trigger_name)
+                if value >= args.set_volume_start and value <= args.set_volume_end:
+                    self.triggers[trigger_name] = self.SET_VOLUME_START_PORT + value
             elif trigger_name in self.change_volume_controls:
                 self.triggers[trigger_name] = self.CHANGE_VOLUME_START_PORT + int(trigger_name.lstrip('c'))
             else:  # Otherwise, use specified port
                 self.triggers[trigger_name] = start_port + i
 
-    def init_triggers(self):
+    def init_triggers(self, args):
         """Initialize triggers based on configuration."""
-        self.add_triggers(DEFAULT_TRIGGERS, self.DEFAULT_TRIGGERS_START_PORT)
-        self.add_triggers(APPS.keys(), self.APPS_START_PORT)
-        self.add_triggers(INPUTS.keys(), self.INPUTS_START_PORT)
+        if args.all or args.default:
+            self.add_triggers(DEFAULT_TRIGGERS, self.DEFAULT_TRIGGERS_START_PORT)
+        if args.all or args.apps:
+            self.add_triggers(APPS.keys(), self.APPS_START_PORT)
+        if args.all or args.inputs:
+            self.add_triggers(INPUTS.keys(), self.INPUTS_START_PORT)
 
         # Only add volume controls if volume is a default trigger
         if 'volume' in DEFAULT_TRIGGERS:
-            self.add_triggers(self.set_volume_controls)
-            self.add_triggers(self.change_volume_controls)
+            if args.set_volume:
+                self.add_triggers(self.set_volume_controls, args=args)
+            if args.change_volume:
+                self.add_triggers(self.change_volume_controls)
 
         logging.info('Triggers: {}'.format(self.triggers))
 
@@ -252,6 +261,17 @@ class device_handler(debounce_handler.debounce_handler):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--all", help="register all triggers", action="store_true")
+    parser.add_argument("--default", help="register default triggers", action="store_true")
+    parser.add_argument("--apps", help="register app triggers", action="store_true")
+    parser.add_argument("--inputs", help="register input triggers", action="store_true")
+    parser.add_argument("--set_volume", help="register set volume triggers", action="store_true")
+    parser.add_argument("--set_volume_start", type=int, help="start of set volume range", default=0)
+    parser.add_argument("--set_volume_end", type=int, help="end of set volume range", default=MAX_VOLUME)
+    parser.add_argument("--change_volume", help="register change volume triggers", action="store_true")
+    args = parser.parse_args()
+
     # TODO: Use newer fauxmo version (python 3)
     # Startup the fauxmo server
     fauxmo.DEBUG = True if LOG_LEVEL == logging.DEBUG else False
@@ -262,7 +282,7 @@ if __name__ == '__main__':
 
     # Register the device callback as a fauxmo handler
     device_handler = device_handler()
-    device_handler.init_triggers()
+    device_handler.init_triggers(args)
     for trigger, port in device_handler.triggers.items():
         fauxmo.fauxmo(trigger, listener, poller, None, port, device_handler)
 
