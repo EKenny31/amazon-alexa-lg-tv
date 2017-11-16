@@ -78,6 +78,7 @@ class device_handler(debounce_handler.debounce_handler):
     triggers = {}
     set_volume_controls = map(str, SET_VOLUME_CONTROLS)
     change_volume_controls = map(lambda x: 'c{}'.format(x), CHANGE_VOLUME_CONTROLS)
+    unknown_volume_status = True
 
     # Define starting port for triggers
     # Give each category of triggers its own range to prevent interference when adding new triggers
@@ -127,8 +128,12 @@ class device_handler(debounce_handler.debounce_handler):
         pipe = subprocess.PIPE
         process = subprocess.Popen(['python', 'lgtv.py', 'audioVolume'], stdin=pipe, stdout=pipe, stderr=pipe)
         output, error = process.communicate()
-        # TODO: Add try, except for this
-        response, closing = output.rstrip('\n').split('\n')  # Except two responses separated by newline with trailing newline
+        self.unknown_volume_status = True
+        try:
+            response, closing = output.rstrip('\n').split('\n')  # Except two responses separated by newline with trailing newline
+        except:
+            logging.error('Bad audioVolume response: couldn\'t load volume/mute status')
+            return
 
         # Load response
         try:
@@ -147,6 +152,7 @@ class device_handler(debounce_handler.debounce_handler):
 
         logging.debug('Current volume: {}'.format(self.current_volume))
         logging.debug('Muted: {}'.format(self.muted))
+        self.unknown_volume_status = False
         return True
 
     # TODO: Use state to decide whether to turn on/off mute?
@@ -170,6 +176,10 @@ class device_handler(debounce_handler.debounce_handler):
             name (str):   trigger name with expected format c<delta>, where delta is an integer in string format
             state (bool): whether to increase or decrease volume
         """
+        if self.unknown_volume_status:
+            logging.error('Can\'t change volume: unknown current volume')
+            return
+
         delta = int(name.lstrip('c'))
         volume_to_set = self.current_volume + delta if state is True else self.current_volume - delta
         if volume_to_set > MAX_VOLUME:
