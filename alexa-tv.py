@@ -123,9 +123,9 @@ class device_handler(debounce_handler.debounce_handler):
 
         # Only add volume controls if volume is a default trigger
         if 'volume' in DEFAULT_TRIGGERS:
-            if args.set_volume:
+            if args.all or args.set_volume:
                 self.add_triggers(self.set_volume_controls, args=args)
-            if args.change_volume:
+            if args.all or args.change_volume:
                 self.add_triggers(self.change_volume_controls)
 
         logging.info('Triggers: {}'.format(self.triggers))
