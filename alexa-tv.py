@@ -73,15 +73,17 @@ def lgtv_call(command, before_msg=None, after_msg=None, popen=False):
 
 class device_handler(debounce_handler.debounce_handler):
     """Publishes the on/off state requested and the IP address of the Echo making the request."""
-    args = None
+    triggers = {}
+
+    last_input = None
+    current_input = None
+
+    unknown_volume_status = True
     current_volume = None
     muted = None
-    change_volume_controls = None
-    set_volume_controls = None
-    triggers = {}
+
     set_volume_controls = map(str, SET_VOLUME_CONTROLS)
     change_volume_controls = map(lambda x: 'c{}'.format(x), CHANGE_VOLUME_CONTROLS)
-    unknown_volume_status = True
 
     # Define starting port for triggers
     # Give each category of triggers its own range to prevent interference when adding new triggers
@@ -246,9 +248,18 @@ class device_handler(debounce_handler.debounce_handler):
             lgtv_call('inputMediaPause', 'Playback set to PAUSE')
 
         # Inputs
-        elif name in INPUTS.keys():
-            # TODO: change to previous input when state == False
+        elif name in INPUTS.keys() and state is True:
             lgtv_call('setInput {}'.format(INPUTS[name]), 'Input set to {}'.format(name))
+            self.last_input = self.current_input
+            self.current_input = name
+        elif name in INPUTS.keys() and state is False:
+            if self.last_input is not None:
+                lgtv_call('setInput {}'.format(INPUTS[self.last_input]), 'Turning off {}, switching to last input {}'.format(name, self.last_input))
+                self.last_input = self.current_input
+                self.current_input = self.last_input
+            else:
+                # TODO: Send notifications to TV for certain errors
+                logging.error('Can\'t turn off {} because no last input'.format(name))
 
         # Apps
         elif name in APPS.keys():
